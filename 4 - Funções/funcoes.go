@@ -14,6 +14,9 @@ func main() {
 	resultSoma, resultSub := calculosMatematicos(20, 8)
 	fmt.Println(resultSoma)
 	fmt.Println(resultSub)
+	
+	resultadoSoma, _ := calculosMatematicos(10, 8)
+	fmt.Println(resultadoSoma)
 }
 
 func calculosMatematicos(n1, n2 int8) (int8, int8) {
