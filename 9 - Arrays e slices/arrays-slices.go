@@ -35,4 +35,13 @@ func main() {
 	
 	slice2 := array4[1:3]
 	fmt.Println(slice2)
+
+	// ARRAYS INTERNOS
+	fmt.Println("Arrays INTERNOS")
+	slice3 := make([]float32, 10, 15)
+	fmt.Println(slice3)
+	fmt.Println(slice3)
+	fmt.Println(len(slice3)) //TAMANHO
+	fmt.Println(cap(slice3)) //CAPACIDADE
+
 }
