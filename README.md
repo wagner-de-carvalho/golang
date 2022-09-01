@@ -18,4 +18,7 @@ Quando lançamos o **Go** ao público pela primeira vez em novembro de 2009, nã
 - `go test -v` = executar testes em modo verboso.
 - `go test -cover` = exibir porcentagem de cobertura de testes.
 - `go test -coverprofile nome-do-arquivo.txt` = gera arquivo de cobertura de testes.
+- `go tool cover --func=nome-do-arquivo.txt` = exibe arquivo de testes.
+- `go tool cover --html=nome-do-arquivo.txt` = exibe detalhamento dos testes.
 - `t.Parallel()` = rodar teste em paralelo.
+- `t.Run(nome, função)` = executa teste na função.
