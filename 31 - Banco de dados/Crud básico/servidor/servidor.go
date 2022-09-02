@@ -152,10 +152,10 @@ func BuscarUsuario(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	
+
 	if usuario.ID == 0 {
 		w.WriteHeader(http.StatusNotFound)
-		mensagem := map[string]string {"mensagem": "Usuário não encontrado!"}
+		mensagem := map[string]string{"mensagem": "Usuário não encontrado!"}
 		mensagemJSON, _ := json.Marshal(mensagem)
 		w.Write([]byte(mensagemJSON))
 		return
