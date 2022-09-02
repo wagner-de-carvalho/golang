@@ -227,3 +227,46 @@ func AtualizarUsuario(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// Excluir usuário
+func ExcluirUsuario(w http.ResponseWriter, r *http.Request) {
+	parametros := mux.Vars(r)
+	ID, erro := strconv.ParseUint(parametros["id"], 10, 32)
+	if erro != nil {
+		mensagem := map[string]string{"mensagem": "Erro ao converter parâmetro!"}
+		mensagemJSON, _ := json.Marshal(mensagem)
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		w.Write([]byte(mensagemJSON))
+		return
+	}
+
+	db, erro := banco.Conectar()
+	if erro != nil {
+		mensagem := map[string]string{"mensagem": "Erro ao tentar conectar-se ao banco!"}
+		mensagemJSON, _ := json.Marshal(mensagem)
+		w.WriteHeader(http.StatusBadGateway)
+		w.Write([]byte(mensagemJSON))
+		return
+	}
+	defer db.Close()
+
+	statement, erro := db.Prepare("delete from usuarios where id = ?")
+	if erro != nil {
+		mensagem := map[string]string{"mensagem": "Erro ao criar statement!"}
+		mensagemJSON, _ := json.Marshal(mensagem)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(mensagemJSON))
+		return
+	}
+	defer statement.Close()
+
+	if _, erro := statement.Exec(ID); erro != nil {
+		mensagem := map[string]string{"mensagem": "Erro ao excluir usuário!"}
+		mensagemJSON, _ := json.Marshal(mensagem)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(mensagemJSON))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+
+}
