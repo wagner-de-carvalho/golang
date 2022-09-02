@@ -166,3 +166,64 @@ func BuscarUsuario(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// Atualizar usuário
+func AtualizarUsuario(w http.ResponseWriter, r *http.Request) {
+	parametros := mux.Vars(r)
+	ID, erro := strconv.ParseUint(parametros["id"], 10, 32)
+	if erro != nil {
+		mensagem := map[string]string{"mensagem": "Erro ao converter parâmetro!"}
+		mensagemJSON, _ := json.Marshal(mensagem)
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		w.Write([]byte(mensagemJSON))
+		return
+	}
+
+	corpoDaRequisicao, erro := ioutil.ReadAll(r.Body)
+	if erro != nil {
+		mensagem := map[string]string{"mensagem": "Erro ao ler corpo da requisição!"}
+		mensagemJSON, _ := json.Marshal(mensagem)
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		w.Write([]byte(mensagemJSON))
+		return
+	}
+
+	var usuario usuario
+	if erro := json.Unmarshal(corpoDaRequisicao, &usuario); erro != nil {
+		mensagem := map[string]string{"mensagem": "Erro ao converter usuário para struct!"}
+		mensagemJSON, _ := json.Marshal(mensagem)
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		w.Write([]byte(mensagemJSON))
+		return
+	}
+
+	db, erro := banco.Conectar()
+	if erro != nil {
+		mensagem := map[string]string{"mensagem": "Erro ao tentar conectar-se ao banco!"}
+		mensagemJSON, _ := json.Marshal(mensagem)
+		w.WriteHeader(http.StatusBadGateway)
+		w.Write([]byte(mensagemJSON))
+		return
+	}
+	defer db.Close()
+
+	statement, erro := db.Prepare("update usuarios set nome = ?, email = ? where id = ?")
+	if erro != nil {
+		mensagem := map[string]string{"mensagem": "Erro ao criar statement!"}
+		mensagemJSON, _ := json.Marshal(mensagem)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(mensagemJSON))
+		return
+	}
+	defer db.Close()
+
+	if _, erro := statement.Exec(usuario.Nome, usuario.Email, ID); erro != nil {
+		mensagem := map[string]string{"mensagem": "Erro ao atualizar usuário!"}
+		mensagemJSON, _ := json.Marshal(mensagem)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(mensagemJSON))
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
