@@ -3,8 +3,12 @@ package servidor
 import (
 	"banco-de-dados/banco"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+
+	"github.com/gorilla/mux"
 )
 
 type usuario struct {
@@ -22,17 +26,21 @@ type mensagem struct {
 func CriarUsuario(w http.ResponseWriter, r *http.Request) {
 	corpoDaRequisicao, erro := ioutil.ReadAll(r.Body)
 	if erro != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
 		w.Write([]byte("Falha ao ler corpo da requisição!"))
 		return
 	}
 
 	var usuario usuario
 	if erro = json.Unmarshal(corpoDaRequisicao, &usuario); erro != nil {
+		w.WriteHeader(http.StatusUnsupportedMediaType)
 		w.Write([]byte("Erro ao converter usuário para struct!"))
 		return
 	}
 	db, erro := banco.Conectar()
 	if erro != nil {
+		fmt.Println(erro)
+		w.WriteHeader(http.StatusBadGateway)
 		w.Write([]byte("Erro ao conectar com o banco de dados!"))
 		return
 	}
@@ -41,6 +49,7 @@ func CriarUsuario(w http.ResponseWriter, r *http.Request) {
 	// PrepareStatement
 	statement, erro := db.Prepare("insert into usuarios (nome, email) values (?, ?)")
 	if erro != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
 		w.Write([]byte("Erro ao criar statement!"))
 		return
 	}
@@ -49,12 +58,14 @@ func CriarUsuario(w http.ResponseWriter, r *http.Request) {
 	// Inserçaõ
 	insercao, erro := statement.Exec(usuario.Nome, usuario.Email)
 	if erro != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Erro ao executar statement!"))
 		return
 	}
 
 	idInserido, erro := insercao.LastInsertId()
 	if erro != nil {
+		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Erro ao obter id inserido no banco!"))
 		return
 	}
@@ -62,6 +73,7 @@ func CriarUsuario(w http.ResponseWriter, r *http.Request) {
 	mensagem := mensagem{idInserido, "Usuário criado com sucesso!"}
 	mensagemJSON, erro := json.Marshal(mensagem)
 	if erro != nil {
+		w.WriteHeader(http.StatusUnsupportedMediaType)
 		w.Write([]byte("Erro ao converter mensagem para JSON!"))
 		return
 	}
@@ -73,6 +85,7 @@ func CriarUsuario(w http.ResponseWriter, r *http.Request) {
 func BuscarUsuarios(w http.ResponseWriter, r *http.Request) {
 	db, erro := banco.Conectar()
 	if erro != nil {
+		w.WriteHeader(http.StatusBadGateway)
 		w.Write([]byte("Erro ao conectar com o banco de dados!"))
 		return
 	}
@@ -80,6 +93,7 @@ func BuscarUsuarios(w http.ResponseWriter, r *http.Request) {
 
 	linhas, erro := db.Query("select * from usuarios")
 	if erro != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Erro ao buscar usuários!"))
 		return
 	}
@@ -91,6 +105,7 @@ func BuscarUsuarios(w http.ResponseWriter, r *http.Request) {
 		var usuario usuario
 
 		if erro := linhas.Scan(&usuario.ID, &usuario.Nome, &usuario.Email); erro != nil {
+			w.WriteHeader(http.StatusUnsupportedMediaType)
 			w.Write([]byte("Erro ao ler registro de usuário"))
 			return
 		}
@@ -100,6 +115,7 @@ func BuscarUsuarios(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	if erro := json.NewEncoder(w).Encode(usuarios); erro != nil {
+		w.WriteHeader(http.StatusUnsupportedMediaType)
 		w.Write([]byte("Erro ao converter usuários para JSON!"))
 		return
 	}
@@ -107,5 +123,46 @@ func BuscarUsuarios(w http.ResponseWriter, r *http.Request) {
 
 // Busca um usuário no banco de dados
 func BuscarUsuario(w http.ResponseWriter, r *http.Request) {
+	parametros := mux.Vars(r)
+	ID, erro := strconv.ParseUint(parametros["id"], 10, 32)
+	if erro != nil {
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		w.Write([]byte("Erro ao converter parâmetro para inteiro!"))
+		return
+	}
 
+	db, erro := banco.Conectar()
+	if erro != nil {
+		w.WriteHeader(http.StatusBadGateway)
+		w.Write([]byte("Erro ao tentar conectar-se ao banco!"))
+		return
+	}
+
+	linha, erro := db.Query("select * from usuarios where id = ?", ID)
+	if erro != nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Erro ao tentar buscar usuário no banco!"))
+		return
+	}
+	var usuario usuario
+	if linha.Next() {
+		if erro := linha.Scan(&usuario.ID, &usuario.Nome, &usuario.Email); erro != nil {
+			w.WriteHeader(http.StatusUnsupportedMediaType)
+			w.Write([]byte("Erro ao escanear usuário!"))
+			return
+		}
+	}
+	
+	if usuario.ID == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		mensagem := map[string]string {"mensagem": "Usuário não encontrado!"}
+		mensagemJSON, _ := json.Marshal(mensagem)
+		w.Write([]byte(mensagemJSON))
+		return
+	}
+	if erro := json.NewEncoder(w).Encode(usuario); erro != nil {
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		w.Write([]byte("Erro ao converter usuário para JSON!"))
+		return
+	}
 }
